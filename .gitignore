@@ -1,0 +1,9 @@
+/.mypy_cache/
+*.exe
+*.pyd
+*.dll
+*.pyc
+/.idea/
+/build/
+/dist/
+/*.egg-info/

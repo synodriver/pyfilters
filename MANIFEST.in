@@ -1,0 +1,2 @@
+include pyfilters/*.pyi
+include pyfilters/py.typed
