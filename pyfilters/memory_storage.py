@@ -59,7 +59,7 @@ class MemoryBloomFilter(BaseBloomFilter):
             return True
         return False
 
-    def clear(self)->None:
+    def clear(self) -> None:
         """清空过滤器"""
         self.bitarray.setall(False)
         self.count = 0
@@ -67,7 +67,7 @@ class MemoryBloomFilter(BaseBloomFilter):
     def __len__(self) -> int:
         return self.count
 
-    def __contains__(self, item: Any):
+    def __contains__(self, item: Any) -> bool:
         if not isinstance(item, str):
             item = str(item)
 
@@ -123,7 +123,7 @@ class CountMemoryBloomFilter(BaseBloomFilter):
             return True
         return False
 
-    def remove(self, item: Any):
+    def remove(self, item: Any) -> bool:
         """
         删除元素
         :param item:
