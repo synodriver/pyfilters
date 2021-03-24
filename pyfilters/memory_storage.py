@@ -73,7 +73,7 @@ class MemoryBloomFilter(BaseBloomFilter):
 
         def _m(x):
             value = x.hash(item)
-            assert value > 0
+            assert 0 <= value < self.m
             return self.bitarray[value]
 
         return all(map(_m, self.hashmaps))
@@ -153,7 +153,7 @@ class CountMemoryBloomFilter(BaseBloomFilter):
 
         def _m(x):
             value = x.hash(item)
-            assert value > 0
+            assert 0 <= value < self.m
             return self.array[value] > 0
 
         return all(map(_m, self.hashmaps))

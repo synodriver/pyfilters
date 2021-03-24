@@ -20,7 +20,7 @@ class PyHashMap(BaseHash):
         ret = 0
         for i in range(len(value)):
             ret += self.seed * ret + ord(value[i])
-        return (self.m - 1) & ret
+        return ret % self.m
 
 
 class MMH3HashMap(BaseHash):

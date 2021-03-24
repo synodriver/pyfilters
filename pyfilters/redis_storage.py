@@ -254,4 +254,4 @@ class CountRedisBloomFilter(BaseBloomFilter):
                 assert 0 <= value < self.m
                 pipe.get(self.key + ":" + str(value))
             results = pipe.execute()
-        return all(map(lambda x: int(x) > 0, results))
+        return all(map(lambda x: x and int(x) > 0, results))
