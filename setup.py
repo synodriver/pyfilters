@@ -37,7 +37,7 @@ def main():
         author="synodriver",
         author_email="diguohuangjiajinweijun@gmail.com",
         maintainer="v-vinson",
-        python_requires=">=3.6",
+        python_requires=">=3.7",
         install_requires=["bitarray", "mmh3", "typing-extensions"],
         license='GPLv3',
         classifiers=[

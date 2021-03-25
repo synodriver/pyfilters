@@ -139,10 +139,12 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
 
     def clear(self) -> None:
         """清空过滤器"""
-        with self.redis_client.pipeline() as pipe:
-            for i in range(self.block_num if self.block_num <= 4096 else 4096):
-                pipe.delete(self.key + ":" + str(i))  # 删除自己的全部内存块
-            pipe.execute()
+        # with self.redis_client.pipeline() as pipe:
+        #     for i in range(self.block_num if self.block_num <= 4096 else 4096):
+        #         pipe.delete(self.key + ":" + str(i))  # 删除自己的全部内存块
+        #     pipe.execute()
+        self.redis_client.delete(
+            *(self.key + ":" + str(i) for i in range(self.block_num if self.block_num <= 4096 else 4096)))
         self.count = 0
 
     def __len__(self) -> int:
@@ -235,11 +237,16 @@ class CountRedisBloomFilter(BaseBloomFilter):
 
     def clear(self) -> None:
         """清空过滤器"""
-        counters = self.redis_client.keys(self.key + ":*")
-        with self.redis_client.pipeline() as pipe:
-            for key in counters:
-                pipe.delete(key)
-            pipe.execute()
+        cursor = 0
+        while True:
+            cursor, keys = self.redis_client.scan(cursor, match=self.key + ":*", count=1000)
+            self.redis_client.delete(*keys)
+            if cursor == 0:
+                break
+        # with self.redis_client.pipeline() as pipe:
+        #     for key in counters:
+        #         pipe.delete(key)
+        #     pipe.execute()
         self.count = 0
 
     def __len__(self) -> int:

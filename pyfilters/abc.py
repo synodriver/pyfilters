@@ -24,20 +24,20 @@ class BaseBloomFilter(ABC):
         :param item: 一个可以变成str的对象
         :return: bool 是否插入成功
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def clear(self):
         """清空过滤器"""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def __contains__(self, item):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def __len__(self):
-        pass
+        raise NotImplementedError
 
 
 class BaseHash(ABC):
@@ -45,7 +45,7 @@ class BaseHash(ABC):
 
     @abstractmethod
     def hash(self, value):
-        pass
+        raise NotImplementedError
 
     @classmethod
     def __subclasshook__(cls, subclass):
