@@ -45,12 +45,16 @@ class RedisBloomFilter(BaseBloomFilter):
         if item not in self:
             if not isinstance(item, str):
                 item = str(item)
-            with self.redis_client.pipeline() as pipe:
-                for map_ in self.hashmaps:
-                    value = map_.hash(item)
-                    assert 0 <= value < self.m  # offset
-                    pipe.setbit(self.key, value, 1)
-                pipe.execute()
+            offsets = list(map(lambda x: x.hash(item), self.hashmaps))
+            lua_script = """
+                        local redis_chunk_key = KEYS[1]
+                        for key = 2, #KEYS do
+                            redis.call('setbit', redis_chunk_key, tonumber(KEYS[key]), 1)
+                        end
+                        return {ok='OK'}
+                        """
+            script = self.redis_client.register_script(lua_script)
+            script(keys=[self.key] + offsets)
             self.count += 1
             return True
         return False
@@ -66,13 +70,20 @@ class RedisBloomFilter(BaseBloomFilter):
     def __contains__(self, item: Any) -> bool:
         if not isinstance(item, str):
             item = str(item)
-        with self.redis_client.pipeline() as pipe:
-            for map_ in self.hashmaps:
-                value = map_.hash(item)  # offset
-                assert 0 <= value < self.m
-                pipe.getbit(self.key, value)
-            results = pipe.execute()
-        return all(results)
+        offsets = list(map(lambda x: x.hash(item), self.hashmaps))
+        lua_script = """
+                   local redis_chunk_key = KEYS[1]
+                    for key = 2, #KEYS do
+                        local ret = redis.call('getbit', redis_chunk_key, tonumber(KEYS[key]))
+                        if ret == 0 then
+                            return 0
+                        end
+                    end
+                    return 1
+                    """
+        script = self.redis_client.register_script(lua_script)
+        result = script(keys=[self.key] + offsets)
+        return bool(result)
 
 
 class ChunkedRedisBloomFilter(BaseBloomFilter):
@@ -127,22 +138,22 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
             redis_chunk_key = self.key + ":" + str(
                 int(md5(item.encode()).hexdigest()[0:self.value_split_num],
                     16) % self.block_num)  # 计算分片key的值 后缀是:0,1...
-            with self.redis_client.pipeline() as pipe:
-                for map_ in self.hashmaps:
-                    value = map_.hash(item)
-                    assert 0 <= value < self.m  # offset
-                    pipe.setbit(redis_chunk_key, value, 1)
-                pipe.execute()
+            offsets = list(map(lambda x: x.hash(item), self.hashmaps))
+            lua_script = """
+            local redis_chunk_key = KEYS[1]
+            for key = 2, #KEYS do
+                redis.call('setbit', redis_chunk_key, tonumber(KEYS[key]), 1)
+            end
+            return {ok='OK'}
+            """
+            script = self.redis_client.register_script(lua_script)
+            script(keys=[redis_chunk_key] + offsets)
             self.count += 1
             return True
         return False
 
     def clear(self) -> None:
         """清空过滤器"""
-        # with self.redis_client.pipeline() as pipe:
-        #     for i in range(self.block_num if self.block_num <= 4096 else 4096):
-        #         pipe.delete(self.key + ":" + str(i))  # 删除自己的全部内存块
-        #     pipe.execute()
         self.redis_client.delete(
             *(self.key + ":" + str(i) for i in range(self.block_num if self.block_num <= 4096 else 4096)))
         self.count = 0
@@ -155,19 +166,26 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
             item = str(item)
         redis_chunk_key = self.key + ":" + str(
             int(md5(item.encode()).hexdigest()[0:self.value_split_num], 16) % self.block_num)
-        with self.redis_client.pipeline() as pipe:
-            for map_ in self.hashmaps:
-                value = map_.hash(item)  # offset
-                assert 0 <= value < self.m
-                pipe.getbit(redis_chunk_key, value)
-            results = pipe.execute()
-        return all(results)
+        offsets = list(map(lambda x: x.hash(item), self.hashmaps))
+        lua_script = """
+                   local redis_chunk_key = KEYS[1]
+                    for key = 2, #KEYS do
+                        local ret = redis.call('getbit', redis_chunk_key, tonumber(KEYS[key]))
+                        if ret == 0 then
+                            return 0
+                        end
+                    end
+                    return 1
+                    """
+        script = self.redis_client.register_script(lua_script)
+        result = script(keys=[redis_chunk_key] + offsets)
+        return bool(result)
 
 
 class CountRedisBloomFilter(BaseBloomFilter):
     """
     BloomFilter that uses Redis, capable of remove elements
-    会产生大量的key
+    使用hashmap来代替，避免产生大量key
     """
 
     def __init__(self,
@@ -195,7 +213,7 @@ class CountRedisBloomFilter(BaseBloomFilter):
         self.k = k  # number of hash functions
         self.block_num = block_num
         self.seeds = self._seeds.copy()[0:k]
-        self.hashmaps = [hash_type(m, seed) for seed in self.seeds]
+        self.hashmaps = [hash_type(m, seed) for seed in self.seeds]  # k个hash函数
 
     def add(self, item: Any) -> bool:
         """
@@ -206,12 +224,25 @@ class CountRedisBloomFilter(BaseBloomFilter):
         if item not in self:
             if not isinstance(item, str):
                 item = str(item)
-            with self.redis_client.pipeline() as pipe:
-                for map_ in self.hashmaps:
-                    value = map_.hash(item)
-                    assert 0 <= value < self.m  # offset
-                    pipe.incrby(self.key + ":" + str(value))
-                pipe.execute()
+            offsets = list(map(lambda x: x.hash(item), self.hashmaps))  # k个偏移量
+            lua_script = """
+            if #KEYS < 2 then
+                return { err = 'wrong argument numbers' }
+            end
+            for key = 2, #KEYS do
+                local ret = redis.call('hget', KEYS[1], KEYS[key])
+                if not ret then
+                    ret = 0
+                else
+                    ret = tonumber(ret)
+                end
+                ret = ret + 1
+                redis.call('hset', KEYS[1], KEYS[key], ret)
+            end
+            return { ok = 'incr by field success' }
+            """
+            script = self.redis_client.register_script(lua_script)
+            result = script(keys=[self.key] + offsets)
             self.count += 1
             return True
         return False
@@ -225,28 +256,35 @@ class CountRedisBloomFilter(BaseBloomFilter):
         if item in self:
             if not isinstance(item, str):
                 item = str(item)
-            with self.redis_client.pipeline() as pipe:
-                for map_ in self.hashmaps:
-                    value = map_.hash(item)  # offset
-                    assert 0 <= value < self.m
-                    pipe.decrby(self.key + ":" + str(value))
-                pipe.execute()
+            offsets = list(map(lambda x: x.hash(item), self.hashmaps))
+            lua_script = """
+                        if #KEYS < 2 then
+                            return { err = 'wrong argument numbers' }
+                        end
+                        if redis.call('exists', KEYS[1]) == 0 then
+                            return { err = 'key ' .. KEYS[1] .. ' does not exists' }
+                        end
+                        for key = 2, #KEYS do
+                            local ret = redis.call('hget', KEYS[1], KEYS[key])-- KEYS[1] 是自己的key 后面的都是需要自增的field
+                            if not ret then
+                                ret = 0
+                            else
+                                ret = tonumber(ret)
+                            end
+                            ret = ret - 1
+                            redis.call('hset',KEYS[1],KEYS[key],ret)
+                        end
+                        return {ok='decr by field success'}
+                        """
+            script = self.redis_client.register_script(lua_script)
+            result = script(keys=[self.key] + offsets)
             self.count -= 1
             return True
         return False
 
     def clear(self) -> None:
         """清空过滤器"""
-        cursor = 0
-        while True:
-            cursor, keys = self.redis_client.scan(cursor, match=self.key + ":*", count=1000)
-            self.redis_client.delete(*keys)
-            if cursor == 0:
-                break
-        # with self.redis_client.pipeline() as pipe:
-        #     for key in counters:
-        #         pipe.delete(key)
-        #     pipe.execute()
+        self.redis_client.delete(self.key)
         self.count = 0
 
     def __len__(self) -> int:
@@ -255,10 +293,27 @@ class CountRedisBloomFilter(BaseBloomFilter):
     def __contains__(self, item: Any) -> bool:
         if not isinstance(item, str):
             item = str(item)
-        with self.redis_client.pipeline() as pipe:
-            for map_ in self.hashmaps:
-                value = map_.hash(item)  # offset
-                assert 0 <= value < self.m
-                pipe.get(self.key + ":" + str(value))
-            results = pipe.execute()
-        return all(map(lambda x: x and int(x) > 0, results))
+        offsets = list(map(lambda x: x.hash(item), self.hashmaps))
+        lua_script = """
+        if #KEYS < 2 then
+            return { err = 'wrong argument numbers' }
+        end
+        if redis.call('exists', KEYS[1]) == 0 then
+            return 0
+        end
+        for key = 2, #KEYS do
+            local ret = redis.call('hget', KEYS[1], KEYS[key]) -- KEYS[1] 是自己的key 后面的都是需要自增的field
+            if not ret then
+                ret = 0
+            else
+                ret = tonumber(ret)
+            end
+            if ret<=0 then
+                return 0
+            end
+        end
+        return 1
+        """
+        script = self.redis_client.register_script(lua_script)
+        result = script(keys=[self.key] + offsets)
+        return bool(result)
