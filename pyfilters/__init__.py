@@ -10,4 +10,4 @@ __all__ = ["MemoryBloomFilter", "CountMemoryBloomFilter",
            "BaseHash", "BaseBloomFilter"]
 
 __author__ = "synodriver"
-__version__ = "0.1.1"
+__version__ = "0.1.2"

@@ -124,7 +124,7 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
         # 为了分开一个大key，需要对每个value计算后缀 因此实际key=key+':'+suffix
         # 这样，每一个value会落在不同的key上，绕过一个string只能2^32位长度(512Mb)的限制
         # 计算方式:对给定的value,计算一次md5,转换16进制，取前value_split_num位十六进制数转换10进制，对block_num取模，就是给定的后缀
-        # 按照上述算法，可见，这里限制最大分key数量为4096 TODO 是否可以更高？ Redis说一个实例可以存2^32个key
+        # 按照上述算法，可见，这里限制最大分key数量为4096  K大说最好10000以下，除非有设置过期
 
     def add(self, item: Any) -> bool:
         """
@@ -226,18 +226,12 @@ class CountRedisBloomFilter(BaseBloomFilter):
                 item = str(item)
             offsets = list(map(lambda x: x.hash(item), self.hashmaps))  # k个偏移量
             lua_script = """
-            if #KEYS < 2 then
+            if tonumber(#KEYS) < 2 then
                 return { err = 'wrong argument numbers' }
             end
+            
             for key = 2, #KEYS do
-                local ret = redis.call('hget', KEYS[1], KEYS[key])
-                if not ret then
-                    ret = 0
-                else
-                    ret = tonumber(ret)
-                end
-                ret = ret + 1
-                redis.call('hset', KEYS[1], KEYS[key], ret)
+                redis.call('hincrby', KEYS[1], KEYS[key], 1)
             end
             return { ok = 'incr by field success' }
             """
@@ -258,23 +252,14 @@ class CountRedisBloomFilter(BaseBloomFilter):
                 item = str(item)
             offsets = list(map(lambda x: x.hash(item), self.hashmaps))
             lua_script = """
-                        if #KEYS < 2 then
+                        if tonumber(#KEYS) < 2 then
                             return { err = 'wrong argument numbers' }
                         end
-                        if redis.call('exists', KEYS[1]) == 0 then
-                            return { err = 'key ' .. KEYS[1] .. ' does not exists' }
-                        end
+                        
                         for key = 2, #KEYS do
-                            local ret = redis.call('hget', KEYS[1], KEYS[key])-- KEYS[1] 是自己的key 后面的都是需要自增的field
-                            if not ret then
-                                ret = 0
-                            else
-                                ret = tonumber(ret)
-                            end
-                            ret = ret - 1
-                            redis.call('hset',KEYS[1],KEYS[key],ret)
+                            redis.call('hincrby', KEYS[1], KEYS[key], -1)
                         end
-                        return {ok='decr by field success'}
+                        return { ok = 'decr by field success' }
                         """
             script = self.redis_client.register_script(lua_script)
             result = script(keys=[self.key] + offsets)
@@ -302,7 +287,7 @@ class CountRedisBloomFilter(BaseBloomFilter):
             return 0
         end
         for key = 2, #KEYS do
-            local ret = redis.call('hget', KEYS[1], KEYS[key]) -- KEYS[1] 是自己的key 后面的都是需要自增的field
+            local ret = redis.call('hget', KEYS[1], KEYS[key])
             if not ret then
                 ret = 0
             else
