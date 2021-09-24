@@ -39,6 +39,7 @@ def main():
         maintainer="v-vinson",
         python_requires=">=3.7",
         install_requires=["bitarray", "mmh3", "typing-extensions"],
+        extra_requires={"redis": ["redis"], "asyncio": ["aioredis"]},
         license='GPLv3',
         classifiers=[
             "Development Status :: 3 - Alpha",

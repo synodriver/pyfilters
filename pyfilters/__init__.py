@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from .memory_storage import MemoryBloomFilter, CountMemoryBloomFilter
-from .redis_storage import RedisBloomFilter, ChunkedRedisBloomFilter, CountRedisBloomFilter
-from .hashmap import PyHashMap, MMH3HashMap, HashlibHashMap
-from .abc import BaseHash, BaseBloomFilter
+from pyfilters.memory_storage import MemoryBloomFilter, CountMemoryBloomFilter
+from pyfilters.redis_storage import RedisBloomFilter, ChunkedRedisBloomFilter, CountRedisBloomFilter
+from pyfilters.hashmap import PyHashMap, MMH3HashMap, HashlibHashMap
+from pyfilters.abc import BaseHash, BaseBloomFilter
 
 __all__ = ["MemoryBloomFilter", "CountMemoryBloomFilter",
            "RedisBloomFilter", "ChunkedRedisBloomFilter", "CountRedisBloomFilter",
@@ -10,4 +10,4 @@ __all__ = ["MemoryBloomFilter", "CountMemoryBloomFilter",
            "BaseHash", "BaseBloomFilter"]
 
 __author__ = "synodriver"
-__version__ = "0.1.2"
+__version__ = "0.1.3rc1"

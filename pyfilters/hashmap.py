@@ -4,7 +4,7 @@ import struct
 
 import mmh3
 
-from .abc import BaseHash
+from pyfilters.abc import BaseHash
 
 
 class PyHashMap(BaseHash):

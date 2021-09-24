@@ -5,9 +5,9 @@ from typing import Optional, Type, Any
 from typing_extensions import Literal
 import bitarray
 
-from .hashmap import MMH3HashMap
-from .abc import BaseBloomFilter, BaseHash
-from .utils import calculation_bloom_filter
+from pyfilters.hashmap import MMH3HashMap
+from pyfilters.abc import BaseBloomFilter, BaseHash
+from pyfilters.utils import calculation_bloom_filter
 
 _IntTypeCode = Literal["b", "B", "h", "H", "i", "I", "l", "L", "q", "Q"]
 

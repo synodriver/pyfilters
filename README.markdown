@@ -1,4 +1,10 @@
 # 由python实现的一系列高效的过滤器算法实现
+[![pypi](https://img.shields.io/pypi/v/pyfilters.svg)](https://pypi.org/project/pyfilters/)
+![python](https://img.shields.io/pypi/pyversions/pyfilters)
+![implementation](https://img.shields.io/pypi/implementation/pyfilters)
+![wheel](https://img.shields.io/pypi/wheel/pyfilters)
+![license](https://img.shields.io/github/license/synodriver/pyfilters.svg)
+
 
 - 基于redis和memory
 - 低时间复杂度
@@ -61,4 +67,24 @@ for i in range(1000):
     assert i in rcbf
 rcbf.remove(1)
 assert 1 not in rcbf
+```
+
+# asyncio兼容
+在pyfilters.asyncio包
+```python
+import asyncio
+
+from aioredis import Redis
+from pyfilters.asyncio import CountRedisBloomFilter
+
+async def main():
+    rcbf = CountRedisBloomFilter(Redis(), "test_countbloomfilter", 10000, 0.00001)
+    for i in range(1000):
+        await rcbf.add(i)
+    for i in range(1000):
+        assert await rcbf.contains(i)
+    await rcbf.remove(1)
+    assert not await rcbf.contains(1)
+
+asyncio.run(main())
 ```
