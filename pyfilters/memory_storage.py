@@ -30,13 +30,13 @@ class MemoryBloomFilter(BaseBloomFilter):
         """
         if not (0 < error_rate < 1):
             raise ValueError("Error_Rate must be between 0 and 1.")
-        if not capacity > 0:
+        if capacity <= 0:
             raise ValueError("Capacity must be > 0")
         m, k, *_ = calculation_bloom_filter(capacity, error_rate)
         self.count = 0
         self.m = m  # len of bitarray
         self.k = k  # number of hash functions
-        self.seeds = self._seeds.copy()[0:k]
+        self.seeds = self._seeds.copy()[:k]
         self.hashmaps = [hash_type(m, seed) for seed in self.seeds]
         self.bitarray = bitarray.bitarray(m, endian="little")
         self.bitarray.setall(False)
@@ -47,17 +47,17 @@ class MemoryBloomFilter(BaseBloomFilter):
         :param item: 一个可以变成str的对象
         :return: bool 是否插入成功
         """
-        if item not in self:
-            if not isinstance(item, str):
-                item = str(item)
+        if item in self:
+            return False
+        if not isinstance(item, str):
+            item = str(item)
 
-            for map_ in self.hashmaps:
-                value = map_.hash(item)
-                assert 0 <= value < self.m
-                self.bitarray[value] = True
-            self.count += 1
-            return True
-        return False
+        for map_ in self.hashmaps:
+            value = map_.hash(item)
+            assert 0 <= value < self.m
+            self.bitarray[value] = True
+        self.count += 1
+        return True
 
     def clear(self) -> None:
         """清空过滤器"""
@@ -95,13 +95,13 @@ class CountMemoryBloomFilter(BaseBloomFilter):
         """
         if not (0 < error_rate < 1):
             raise ValueError("Error_Rate must be between 0 and 1.")
-        if not capacity > 0:
+        if capacity <= 0:
             raise ValueError("Capacity must be > 0")
         m, k, *_ = calculation_bloom_filter(capacity, error_rate)
         self.count = 0
         self.m = m  # len of array
         self.k = k  # number of hash functions
-        self.seeds = self._seeds.copy()[0:k]
+        self.seeds = self._seeds.copy()[:k]
         self.hashmaps = [hash_type(m, seed) for seed in self.seeds]
         self.array = array.array(array_type, [0] * m)
 
@@ -111,17 +111,17 @@ class CountMemoryBloomFilter(BaseBloomFilter):
         :param item: 一个可以变成str的对象
         :return: bool 是否插入成功
         """
-        if item not in self:
-            if not isinstance(item, str):
-                item = str(item)
+        if item in self:
+            return False
+        if not isinstance(item, str):
+            item = str(item)
 
-            for map_ in self.hashmaps:
-                value = map_.hash(item)
-                assert 0 <= value < self.m
-                self.array[value] += 1
-            self.count += 1
-            return True
-        return False
+        for map_ in self.hashmaps:
+            value = map_.hash(item)
+            assert 0 <= value < self.m
+            self.array[value] += 1
+        self.count += 1
+        return True
 
     def remove(self, item: Any) -> bool:
         """
@@ -129,17 +129,17 @@ class CountMemoryBloomFilter(BaseBloomFilter):
         :param item:
         :return: 是否删除
         """
-        if item in self:
-            if not isinstance(item, str):
-                item = str(item)
+        if item not in self:
+            return False
+        if not isinstance(item, str):
+            item = str(item)
 
-            for map_ in self.hashmaps:
-                value = map_.hash(item)
-                assert 0 <= value < self.m
-                self.array[value] -= 1
-            self.count -= 1
-            return True
-        return False
+        for map_ in self.hashmaps:
+            value = map_.hash(item)
+            assert 0 <= value < self.m
+            self.array[value] -= 1
+        self.count -= 1
+        return True
 
     def clear(self) -> None:
         """清空过滤器"""

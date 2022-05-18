@@ -11,8 +11,6 @@ class MyTestCase(unittest.TestCase):
         for i in range(1000):
             v = self.hashmap.hash(str(i))
             print(f"hashing {i}")
-            if v < 0:
-                pass
             self.assertTrue(10000 > v >= 0)
         # v = self.hashmap.hash(str(312))
 
