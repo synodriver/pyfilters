@@ -42,7 +42,7 @@ class RedisBloomFilter(BaseBloomFilter):
         :param item: 一个可以变成str的对象
         :return: bool 是否插入成功
         """
-        if item not in self:
+        if not await self.contains(item):
             if not isinstance(item, str):
                 item = str(item)
             offsets = list(map(lambda x: x.hash(item), self.hashmaps))
@@ -132,7 +132,7 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
         :param item: 一个可以变成str的对象
         :return: bool 是否插入成功
         """
-        if item not in self:
+        if not await self.contains(item):
             if not isinstance(item, str):
                 item = str(item)
             redis_chunk_key = self.key + ":" + str(
@@ -221,7 +221,7 @@ class CountRedisBloomFilter(BaseBloomFilter):
         :param item: 一个可以变成str的对象
         :return: bool 是否插入成功
         """
-        if item not in self:
+        if not await self.contains(item):
             if not isinstance(item, str):
                 item = str(item)
             offsets = list(map(lambda x: x.hash(item), self.hashmaps))  # k个偏移量
@@ -247,7 +247,7 @@ class CountRedisBloomFilter(BaseBloomFilter):
         :param item:
         :return: 是否删除
         """
-        if item in self:
+        if await self.contains(item)::
             if not isinstance(item, str):
                 item = str(item)
             offsets = list(map(lambda x: x.hash(item), self.hashmaps))
