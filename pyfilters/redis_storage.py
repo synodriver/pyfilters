@@ -3,19 +3,21 @@ from hashlib import md5
 from typing import Any, Optional, Type
 
 from pyfilters.abc import BaseBloomFilter, BaseHash
-from pyfilters.utils import calculation_bloom_filter
 from pyfilters.hashmap import MMH3HashMap
+from pyfilters.utils import calculation_bloom_filter
 
 
 class RedisBloomFilter(BaseBloomFilter):
     """BloomFilter that uses Redis"""
 
-    def __init__(self,
-                 redis_client,
-                 key: str,
-                 capacity: int,
-                 error_rate: Optional[float] = 0.001,
-                 hash_type: Optional[Type[BaseHash]] = MMH3HashMap):
+    def __init__(
+        self,
+        redis_client,
+        key: str,
+        capacity: int,
+        error_rate: Optional[float] = 0.001,
+        hash_type: Optional[Type[BaseHash]] = MMH3HashMap,
+    ):
         """
         Redis简单存储 没有拆分大Key
         :param capacity: 容量
@@ -89,12 +91,14 @@ class RedisBloomFilter(BaseBloomFilter):
 class ChunkedRedisBloomFilter(BaseBloomFilter):
     """BloomFilter that uses Redis, Chunk big keys"""
 
-    def __init__(self,
-                 redis_client,
-                 key: str,
-                 capacity: int,
-                 error_rate: Optional[float] = 0.001,
-                 hash_type: Optional[Type[BaseHash]] = MMH3HashMap):
+    def __init__(
+        self,
+        redis_client,
+        key: str,
+        capacity: int,
+        error_rate: Optional[float] = 0.001,
+        hash_type: Optional[Type[BaseHash]] = MMH3HashMap,
+    ):
         """
         Redis简单存储 会拆分大Key
         :param capacity: 容量
@@ -135,9 +139,14 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
         if item not in self:
             if not isinstance(item, str):
                 item = str(item)
-            redis_chunk_key = self.key + ":" + str(
-                int(md5(item.encode()).hexdigest()[0:self.value_split_num],
-                    16) % self.block_num)  # 计算分片key的值 后缀是:0,1...
+            redis_chunk_key = (
+                self.key
+                + ":"
+                + str(
+                    int(md5(item.encode()).hexdigest()[0 : self.value_split_num], 16)
+                    % self.block_num
+                )
+            )  # 计算分片key的值 后缀是:0,1...
             offsets = list(map(lambda x: x.hash(item), self.hashmaps))
             lua_script = """
             local redis_chunk_key = KEYS[1]
@@ -155,7 +164,11 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
     def clear(self) -> None:
         """清空过滤器"""
         self.redis_client.delete(
-            *(self.key + ":" + str(i) for i in range(self.block_num if self.block_num <= 4096 else 4096)))
+            *(
+                self.key + ":" + str(i)
+                for i in range(self.block_num if self.block_num <= 4096 else 4096)
+            )
+        )
         self.count = 0
 
     def __len__(self) -> int:
@@ -164,8 +177,14 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
     def __contains__(self, item: Any) -> bool:
         if not isinstance(item, str):
             item = str(item)
-        redis_chunk_key = self.key + ":" + str(
-            int(md5(item.encode()).hexdigest()[0:self.value_split_num], 16) % self.block_num)
+        redis_chunk_key = (
+            self.key
+            + ":"
+            + str(
+                int(md5(item.encode()).hexdigest()[0 : self.value_split_num], 16)
+                % self.block_num
+            )
+        )
         offsets = list(map(lambda x: x.hash(item), self.hashmaps))
         lua_script = """
                    local redis_chunk_key = KEYS[1]
@@ -188,12 +207,14 @@ class CountRedisBloomFilter(BaseBloomFilter):
     使用hashmap来代替，避免产生大量key
     """
 
-    def __init__(self,
-                 redis_client,
-                 key: str,
-                 capacity: int,
-                 error_rate: Optional[float] = 0.001,
-                 hash_type: Optional[Type[BaseHash]] = MMH3HashMap):
+    def __init__(
+        self,
+        redis_client,
+        key: str,
+        capacity: int,
+        error_rate: Optional[float] = 0.001,
+        hash_type: Optional[Type[BaseHash]] = MMH3HashMap,
+    ):
         """
         Redis key当做counter
         :param capacity: 容量

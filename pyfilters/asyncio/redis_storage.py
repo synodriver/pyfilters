@@ -3,19 +3,21 @@ from hashlib import md5
 from typing import Any, Optional, Type
 
 from pyfilters.abc import BaseBloomFilter, BaseHash
-from pyfilters.utils import calculation_bloom_filter
 from pyfilters.hashmap import MMH3HashMap
+from pyfilters.utils import calculation_bloom_filter
 
 
 class RedisBloomFilter(BaseBloomFilter):
     """BloomFilter that uses Redis"""
 
-    def __init__(self,
-                 redis_client,
-                 key: str,
-                 capacity: int,
-                 error_rate: Optional[float] = 0.001,
-                 hash_type: Optional[Type[BaseHash]] = MMH3HashMap):
+    def __init__(
+        self,
+        redis_client,
+        key: str,
+        capacity: int,
+        error_rate: Optional[float] = 0.001,
+        hash_type: Optional[Type[BaseHash]] = MMH3HashMap,
+    ):
         """
         Redis简单存储 没有拆分大Key
         :param capacity: 容量
@@ -53,8 +55,8 @@ class RedisBloomFilter(BaseBloomFilter):
                         end
                         return {ok='OK'}
                         """
-            script = await self.redis_client.register_script(lua_script)
-            script(keys=[self.key] + offsets)
+            script = self.redis_client.register_script(lua_script)
+            await script(keys=[self.key] + offsets)
             self.count += 1
             return True
         return False
@@ -66,6 +68,9 @@ class RedisBloomFilter(BaseBloomFilter):
 
     def __len__(self) -> int:
         return self.count
+
+    def __contains__(self, item: Any) -> bool:
+        raise NotImplementedError("use await self.contains() instead")
 
     async def contains(self, item: Any) -> bool:
         if not isinstance(item, str):
@@ -81,7 +86,7 @@ class RedisBloomFilter(BaseBloomFilter):
                     end
                     return 1
                     """
-        script = await self.redis_client.register_script(lua_script)
+        script = self.redis_client.register_script(lua_script)
         result = await script(keys=[self.key] + offsets)
         return bool(result)
 
@@ -89,12 +94,14 @@ class RedisBloomFilter(BaseBloomFilter):
 class ChunkedRedisBloomFilter(BaseBloomFilter):
     """BloomFilter that uses Redis, Chunk big keys"""
 
-    def __init__(self,
-                 redis_client,
-                 key: str,
-                 capacity: int,
-                 error_rate: Optional[float] = 0.001,
-                 hash_type: Optional[Type[BaseHash]] = MMH3HashMap):
+    def __init__(
+        self,
+        redis_client,
+        key: str,
+        capacity: int,
+        error_rate: Optional[float] = 0.001,
+        hash_type: Optional[Type[BaseHash]] = MMH3HashMap,
+    ):
         """
         Redis简单存储 会拆分大Key
         :param capacity: 容量
@@ -135,9 +142,14 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
         if not await self.contains(item):
             if not isinstance(item, str):
                 item = str(item)
-            redis_chunk_key = self.key + ":" + str(
-                int(md5(item.encode()).hexdigest()[0:self.value_split_num],
-                    16) % self.block_num)  # 计算分片key的值 后缀是:0,1...
+            redis_chunk_key = (
+                self.key
+                + ":"
+                + str(
+                    int(md5(item.encode()).hexdigest()[0 : self.value_split_num], 16)
+                    % self.block_num
+                )
+            )  # 计算分片key的值 后缀是:0,1...
             offsets = list(map(lambda x: x.hash(item), self.hashmaps))
             lua_script = """
             local redis_chunk_key = KEYS[1]
@@ -146,8 +158,8 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
             end
             return {ok='OK'}
             """
-            script = await self.redis_client.register_script(lua_script)
-            await script(keys=[redis_chunk_key] + offsets) # todo return?
+            script = self.redis_client.register_script(lua_script)
+            await script(keys=[redis_chunk_key] + offsets)  # todo return?
             self.count += 1
             return True
         return False
@@ -155,17 +167,30 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
     async def clear(self) -> None:
         """清空过滤器"""
         await self.redis_client.delete(
-            *(self.key + ":" + str(i) for i in range(self.block_num if self.block_num <= 4096 else 4096)))
+            *(
+                self.key + ":" + str(i)
+                for i in range(self.block_num if self.block_num <= 4096 else 4096)
+            )
+        )
         self.count = 0
 
     def __len__(self) -> int:
         return self.count
 
+    def __contains__(self, item: Any) -> bool:
+        raise NotImplementedError("use await self.contains() instead")
+
     async def contains(self, item: Any) -> bool:
         if not isinstance(item, str):
             item = str(item)
-        redis_chunk_key = self.key + ":" + str(
-            int(md5(item.encode()).hexdigest()[0:self.value_split_num], 16) % self.block_num)
+        redis_chunk_key = (
+            self.key
+            + ":"
+            + str(
+                int(md5(item.encode()).hexdigest()[0 : self.value_split_num], 16)
+                % self.block_num
+            )
+        )
         offsets = list(map(lambda x: x.hash(item), self.hashmaps))
         lua_script = """
                    local redis_chunk_key = KEYS[1]
@@ -177,7 +202,7 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
                     end
                     return 1
                     """
-        script = await self.redis_client.register_script(lua_script)
+        script = self.redis_client.register_script(lua_script)
         result = await script(keys=[redis_chunk_key] + offsets)
         return bool(result)
 
@@ -188,12 +213,14 @@ class CountRedisBloomFilter(BaseBloomFilter):
     使用hashmap来代替，避免产生大量key
     """
 
-    def __init__(self,
-                 redis_client,
-                 key: str,
-                 capacity: int,
-                 error_rate: Optional[float] = 0.001,
-                 hash_type: Optional[Type[BaseHash]] = MMH3HashMap):
+    def __init__(
+        self,
+        redis_client,
+        key: str,
+        capacity: int,
+        error_rate: Optional[float] = 0.001,
+        hash_type: Optional[Type[BaseHash]] = MMH3HashMap,
+    ):
         """
         Redis key当做counter
         :param capacity: 容量
@@ -235,7 +262,7 @@ class CountRedisBloomFilter(BaseBloomFilter):
             end
             return { ok = 'incr by field success' }
             """
-            script = await self.redis_client.register_script(lua_script)
+            script = self.redis_client.register_script(lua_script)
             await script(keys=[self.key] + offsets)
             self.count += 1
             return True
@@ -247,7 +274,7 @@ class CountRedisBloomFilter(BaseBloomFilter):
         :param item:
         :return: 是否删除
         """
-        if await self.contains(item)::
+        if await self.contains(item):
             if not isinstance(item, str):
                 item = str(item)
             offsets = list(map(lambda x: x.hash(item), self.hashmaps))
@@ -261,7 +288,7 @@ class CountRedisBloomFilter(BaseBloomFilter):
                         end
                         return { ok = 'decr by field success' }
                         """
-            script = await self.redis_client.register_script(lua_script)
+            script = self.redis_client.register_script(lua_script)
             await script(keys=[self.key] + offsets)
             self.count -= 1
             return True
@@ -274,6 +301,9 @@ class CountRedisBloomFilter(BaseBloomFilter):
 
     def __len__(self) -> int:
         return self.count
+
+    def __contains__(self, item: Any) -> bool:
+        raise NotImplementedError("use await self.contains() instead")
 
     async def contains(self, item: Any) -> bool:
         if not isinstance(item, str):
@@ -299,6 +329,6 @@ class CountRedisBloomFilter(BaseBloomFilter):
         end
         return 1
         """
-        script = await self.redis_client.register_script(lua_script)
+        script = self.redis_client.register_script(lua_script)
         result = await script(keys=[self.key] + offsets)
         return bool(result)

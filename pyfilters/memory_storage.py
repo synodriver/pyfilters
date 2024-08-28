@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import array
-from typing import Optional, Type, Any
+from typing import Any, Optional, Type
 
-from typing_extensions import Literal
 import bitarray
+from typing_extensions import Literal
 
-from pyfilters.hashmap import MMH3HashMap
 from pyfilters.abc import BaseBloomFilter, BaseHash
+from pyfilters.hashmap import MMH3HashMap
 from pyfilters.utils import calculation_bloom_filter
 
 _IntTypeCode = Literal["b", "B", "h", "H", "i", "I", "l", "L", "q", "Q"]
@@ -16,12 +16,16 @@ _IntTypeCode = Literal["b", "B", "h", "H", "i", "I", "l", "L", "q", "Q"]
 # https://github.com/leffss/ScrapyRedisBloomFilterBlockCluster/blob/master/scrapy_redis_bloomfilter_block_cluster/
 # good implementation
 
+
 class MemoryBloomFilter(BaseBloomFilter):
     """BloomFilter that uses memory"""
 
-    def __init__(self, capacity: int,
-                 error_rate: Optional[float] = 0.001,
-                 hash_type: Optional[Type[BaseHash]] = MMH3HashMap):
+    def __init__(
+        self,
+        capacity: int,
+        error_rate: Optional[float] = 0.001,
+        hash_type: Optional[Type[BaseHash]] = MMH3HashMap,
+    ):
         """
 
         :param capacity: 容量
@@ -82,10 +86,13 @@ class MemoryBloomFilter(BaseBloomFilter):
 class CountMemoryBloomFilter(BaseBloomFilter):
     """可以删除数据的过滤器 消耗大量内存"""
 
-    def __init__(self, capacity: int,
-                 error_rate: Optional[float] = 0.001,
-                 hash_type: Optional[Type[BaseHash]] = MMH3HashMap,
-                 array_type: Optional[_IntTypeCode] = "L"):
+    def __init__(
+        self,
+        capacity: int,
+        error_rate: Optional[float] = 0.001,
+        hash_type: Optional[Type[BaseHash]] = MMH3HashMap,
+        array_type: Optional[_IntTypeCode] = "L",
+    ):
         """
 
         :param capacity: 容量

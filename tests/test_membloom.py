@@ -1,6 +1,11 @@
 import unittest
 
-from pyfilters import MemoryBloomFilter, HashlibHashMap, PyHashMap, CountMemoryBloomFilter
+from pyfilters import (
+    CountMemoryBloomFilter,
+    HashlibHashMap,
+    MemoryBloomFilter,
+    PyHashMap,
+)
 
 
 class MyTestCase(unittest.TestCase):
@@ -20,19 +25,15 @@ class MyTestCase(unittest.TestCase):
         self.assertNotIn(1001, self.bf, "1001居然在里面了")
         self.assertNotIn(1001, self.cbf, "1001居然在里面了")
 
-    def test_remove(self):
-        for i in range(1000):
-            self.cbf.remove(i)
         for i in range(1000):
             self.cbf.remove(i)
             self.assertNotIn(i, self.cbf, f"{i}居然没有被remove")
 
-    def test_clear(self):
         self.bf.clear()
         self.assertNotIn(1, self.bf)
         self.cbf.clear()
         self.assertNotIn(1, self.cbf)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

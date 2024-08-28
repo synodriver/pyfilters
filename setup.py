@@ -2,11 +2,13 @@
 import os
 import re
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 
 def get_version() -> str:
-    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "pyfilters", "__init__.py")
+    path = os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), "pyfilters", "__init__.py"
+    )
     with open(path, "r", encoding="utf-8") as f:
         data = f.read()
     result = re.findall(r"(?<=__version__ = \")\S+(?=\")", data)
@@ -18,7 +20,7 @@ def get_dis():
         return f.read()
 
 
-packages = find_packages(exclude=('test', 'tests.*', "test*"))
+packages = find_packages(exclude=("test", "tests.*", "test*"))
 
 
 def main():
@@ -40,7 +42,7 @@ def main():
         python_requires=">=3.7",
         install_requires=["bitarray", "mmh3", "typing-extensions"],
         extra_requires={"redis": ["redis"], "asyncio": ["aioredis"]},
-        license='GPLv3',
+        license="GPLv3",
         classifiers=[
             "Development Status :: 3 - Alpha",
             "Operating System :: OS Independent",
@@ -49,9 +51,9 @@ def main():
             "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: 3.8",
             "Programming Language :: Python :: 3.9",
-            "Programming Language :: Python :: Implementation :: CPython"
+            "Programming Language :: Python :: Implementation :: CPython",
         ],
-        include_package_data=True
+        include_package_data=True,
     )
 
 

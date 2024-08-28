@@ -10,7 +10,7 @@ def calculation_bloom_filter(n: int, p: float) -> Tuple[int, int, int, int]:
     :param p: 误报率
     :return: 布隆过滤器位数, hash函数个数 需要内存(Mb) 需要多少内存块
     """
-    m = - (n * (math.log(p)) / (math.log(2)) ** 2)  # bit number bitarray长度
+    m = -(n * (math.log(p)) / (math.log(2)) ** 2)  # bit number bitarray长度
     k = m / n * math.log(2)  # hash functions
     mem = math.ceil(m / 8 / 1024 / 1024)  # 需要的多少 M 内存
     block_num = math.ceil(mem / 512)  # 需要多少个 Redis 512M 的内存块 Redis一个string最大512M
