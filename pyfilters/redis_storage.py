@@ -40,24 +40,24 @@ class RedisBloomFilter(BaseBloomFilter):
 
         self._add_script = self.redis_client.register_script(
             """
-                        local redis_chunk_key = KEYS[1]
-                        for key = 2, #KEYS do
-                            redis.call('setbit', redis_chunk_key, tonumber(KEYS[key]), 1)
-                        end
-                        return {ok='OK'}
-                        """
+            local redis_chunk_key = KEYS[1]
+            for key = 2, #KEYS do
+                redis.call('setbit', redis_chunk_key, tonumber(KEYS[key]), 1)
+            end
+            return {ok='OK'}
+            """
         )
         self._contains_script = self.redis_client.register_script(
             """
-                   local redis_chunk_key = KEYS[1]
-                    for key = 2, #KEYS do
-                        local ret = redis.call('getbit', redis_chunk_key, tonumber(KEYS[key]))
-                        if ret == 0 then
-                            return 0
-                        end
-                    end
-                    return 1
-                    """
+            local redis_chunk_key = KEYS[1]
+            for key = 2, #KEYS do
+                local ret = redis.call('getbit', redis_chunk_key, tonumber(KEYS[key]))
+                if ret == 0 then
+                    return 0
+                end
+            end
+            return 1
+            """
         )
 
     def add(self, item: Any) -> bool:
@@ -143,15 +143,15 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
         )
         self._contains_script = self.redis_client.register_script(
             """
-                   local redis_chunk_key = KEYS[1]
-                    for key = 2, #KEYS do
-                        local ret = redis.call('getbit', redis_chunk_key, tonumber(KEYS[key]))
-                        if ret == 0 then
-                            return 0
-                        end
-                    end
-                    return 1
-                    """
+            local redis_chunk_key = KEYS[1]
+            for key = 2, #KEYS do
+                local ret = redis.call('getbit', redis_chunk_key, tonumber(KEYS[key]))
+                if ret == 0 then
+                    return 0
+                end
+            end
+            return 1
+            """
         )
 
     def add(self, item: Any) -> bool:
@@ -255,37 +255,37 @@ class CountRedisBloomFilter(BaseBloomFilter):
         )
         self._remove_script = self.redis_client.register_script(
             """
-                        if tonumber(#KEYS) < 2 then
-                            return { err = 'wrong argument numbers' }
-                        end
-                        
-                        for key = 2, #KEYS do
-                            redis.call('hincrby', KEYS[1], KEYS[key], -1)
-                        end
-                        return { ok = 'decr by field success' }
-                        """
+            if tonumber(#KEYS) < 2 then
+                return { err = 'wrong argument numbers' }
+            end
+            
+            for key = 2, #KEYS do
+                redis.call('hincrby', KEYS[1], KEYS[key], -1)
+            end
+            return { ok = 'decr by field success' }
+            """
         )
         self._contains_script = self.redis_client.register_script(
             """
-        if #KEYS < 2 then
-            return { err = 'wrong argument numbers' }
-        end
-        if redis.call('exists', KEYS[1]) == 0 then
-            return 0
-        end
-        for key = 2, #KEYS do
-            local ret = redis.call('hget', KEYS[1], KEYS[key])
-            if not ret then
-                ret = 0
-            else
-                ret = tonumber(ret)
+            if #KEYS < 2 then
+                return { err = 'wrong argument numbers' }
             end
-            if ret<=0 then
+            if redis.call('exists', KEYS[1]) == 0 then
                 return 0
             end
-        end
-        return 1
-        """
+            for key = 2, #KEYS do
+                local ret = redis.call('hget', KEYS[1], KEYS[key])
+                if not ret then
+                    ret = 0
+                else
+                    ret = tonumber(ret)
+                end
+                if ret<=0 then
+                    return 0
+                end
+            end
+            return 1
+            """
         )
 
     def add(self, item: Any) -> bool:
