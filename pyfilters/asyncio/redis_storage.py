@@ -28,7 +28,7 @@ class RedisBloomFilter(BaseBloomFilter):
             raise ValueError("Error_Rate must be between 0 and 1.")
         if not capacity > 0:
             raise ValueError("Capacity must be > 0")
-        self.redis_client = redis_client  # type: aioredis.Redis
+        self.redis_client = redis_client  # type: redis.asyncio.Redis
         self.key = key
 
         m, k, mem, block_num = calculation_bloom_filter(capacity, error_rate)

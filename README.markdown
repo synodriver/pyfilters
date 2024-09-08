@@ -74,7 +74,7 @@ assert 1 not in rcbf
 ```python
 import asyncio
 
-from aioredis import Redis
+from redis.asyncio import Redis
 from pyfilters.asyncio import CountRedisBloomFilter
 
 async def main():
