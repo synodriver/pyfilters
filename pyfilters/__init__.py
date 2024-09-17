@@ -22,4 +22,4 @@ __all__ = [
 ]
 
 __author__ = "synodriver"
-__version__ = "0.1.4"
+__version__ = "0.1.5"

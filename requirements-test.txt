@@ -1,3 +1,4 @@
 mmh3
 bitarray
 redis
+pytest
