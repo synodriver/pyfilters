@@ -20,6 +20,7 @@ class RedisBloomFilter(BaseBloomFilter):
     ):
         """
         Redis简单存储 没有拆分大Key
+        :param key: redis中的键名
         :param capacity: 容量
         :param error_rate: 错误率
         :param hash_type: hash函数类型
@@ -42,7 +43,7 @@ class RedisBloomFilter(BaseBloomFilter):
             """
             local redis_chunk_key = KEYS[1]
             for key = 2, #KEYS do
-                redis.call('setbit', redis_chunk_key, tonumber(KEYS[key]), 1)
+                redis.call("SETBIT", redis_chunk_key, tonumber(KEYS[key]), 1)
             end
             return {ok='OK'}
             """
@@ -51,7 +52,7 @@ class RedisBloomFilter(BaseBloomFilter):
             """
             local redis_chunk_key = KEYS[1]
             for key = 2, #KEYS do
-                local ret = redis.call('getbit', redis_chunk_key, tonumber(KEYS[key]))
+                local ret = redis.call("GETBIT", redis_chunk_key, tonumber(KEYS[key]))
                 if ret == 0 then
                     return 0
                 end
@@ -104,6 +105,7 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
     ):
         """
         Redis简单存储 会拆分大Key
+        :param key: redis中的键名
         :param capacity: 容量
         :param error_rate: 错误率
         :param hash_type: hash函数类型
@@ -136,7 +138,7 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
             """
             local redis_chunk_key = KEYS[1]
             for key = 2, #KEYS do
-                redis.call('setbit', redis_chunk_key, tonumber(KEYS[key]), 1)
+                redis.call("SETBIT", redis_chunk_key, tonumber(KEYS[key]), 1)
             end
             return {ok='OK'}
             """
@@ -145,7 +147,7 @@ class ChunkedRedisBloomFilter(BaseBloomFilter):
             """
             local redis_chunk_key = KEYS[1]
             for key = 2, #KEYS do
-                local ret = redis.call('getbit', redis_chunk_key, tonumber(KEYS[key]))
+                local ret = redis.call("GETBIT", redis_chunk_key, tonumber(KEYS[key]))
                 if ret == 0 then
                     return 0
                 end
@@ -222,6 +224,7 @@ class CountRedisBloomFilter(BaseBloomFilter):
     ):
         """
         Redis key当做counter
+        :param key: redis中的键名
         :param capacity: 容量
         :param error_rate: 错误率
         :param hash_type: hash函数类型
@@ -244,37 +247,36 @@ class CountRedisBloomFilter(BaseBloomFilter):
         self._add_script = self.redis_client.register_script(
             """
             if tonumber(#KEYS) < 2 then
-                return { err = 'wrong argument numbers' }
+                return { err = "wrong argument numbers" }
             end
-            
             for key = 2, #KEYS do
-                redis.call('hincrby', KEYS[1], KEYS[key], 1)
+                redis.call("HINCRBY", KEYS[1], KEYS[key], 1)
             end
-            return { ok = 'incr by field success' }
+            return { ok = "incr by field success" }
             """
         )
         self._remove_script = self.redis_client.register_script(
             """
             if tonumber(#KEYS) < 2 then
-                return { err = 'wrong argument numbers' }
+                return { err = "wrong argument numbers" }
             end
             
             for key = 2, #KEYS do
-                redis.call('hincrby', KEYS[1], KEYS[key], -1)
+                redis.call("HINCRBY", KEYS[1], KEYS[key], -1)
             end
-            return { ok = 'decr by field success' }
+            return { ok = "decr by field success" }
             """
         )
         self._contains_script = self.redis_client.register_script(
             """
             if #KEYS < 2 then
-                return { err = 'wrong argument numbers' }
+                return { err = "wrong argument numbers" }
             end
-            if redis.call('exists', KEYS[1]) == 0 then
+            if redis.call("EXISTS", KEYS[1]) == 0 then
                 return 0
             end
             for key = 2, #KEYS do
-                local ret = redis.call('hget', KEYS[1], KEYS[key])
+                local ret = redis.call("HGET", KEYS[1], KEYS[key])
                 if not ret then
                     ret = 0
                 else

@@ -137,6 +137,9 @@ class BaseBloomFilter(ABC):
 class BaseHash(ABC):
     """Base Hash Functions"""
 
+    def __init__(self, m: int, seed: int):
+        ...
+
     @abstractmethod
     def hash(self, value):
         raise NotImplementedError
